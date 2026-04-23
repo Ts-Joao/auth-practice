@@ -1,4 +1,5 @@
 import { HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
 import { DatabaseService } from 'src/database/database.service';
 import { CreateUserDto } from './dto/create.user.dto';
 import { UpdateUserDto } from './dto/update.user.dto';
@@ -16,18 +17,24 @@ export class UsersService {
             if(findEmail) {
                 throw new HttpException('Email already exists',HttpStatus.CONFLICT)
             }
+
+            const hashedPassword = await bcrypt.hash(createUserDto.password, 10) 
     
             const newUser = await this.databaseService.user.create({
                 data: {
                     email: createUserDto.email,
-                    password: createUserDto.password
+                    password: hashedPassword
                 }
             })
-            
+
             return newUser
         } catch (error) {
             throw new HttpException('Database Error', HttpStatus.INTERNAL_SERVER_ERROR)
         }
+    }
+
+    async findByEmail(email: string) {
+        return this.databaseService.user.findUnique({ where: { email } })
     }
 
     async get() {
