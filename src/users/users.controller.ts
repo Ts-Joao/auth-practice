@@ -1,5 +1,6 @@
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import type { JwtPayload } from 'src/auth/types/jwt-payload.type';
+import { RolesGuards } from 'src/auth/guards/roles.guard';
 import { CreateUserDto } from './dto/create.user.dto';
 import { UpdateUserDto } from './dto/update.user.dto';
 import { JwtGuard } from 'src/auth/jwt/jwt.guard';
@@ -15,6 +16,7 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
+import { SelfOrAdminGuard } from 'src/auth/guards/owner-or-admin.guard';
 
 @Controller('users')
 export class UsersController {
@@ -43,7 +45,7 @@ export class UsersController {
     }
 
     @Delete(':id')
-    @UseGuards(JwtGuard)
+    @UseGuards(JwtGuard, SelfOrAdminGuard)
     deleteUser(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: JwtPayload) {
         console.log('user', user)
         return this.usersService.delete(id)
