@@ -10,21 +10,28 @@ export class AuthService {
         private readonly usersService: UsersService,
     ) {}
 
-    async login(email: string, password: string) {
-        const user = await this.usersService.findByEmail(email)
-
-        if (!user) {
-            throw new HttpException('Invalid credentials', HttpStatus.UNAUTHORIZED)
-        }
-
-        const passwordMatch = await bcrypt.compare(password, user.password)
+    async login(user: any) {
+        const passwordMatch = await bcrypt.compare(user.password, user.password)
 
         if (!passwordMatch) {
             throw new HttpException('Invalid credential', HttpStatus.UNAUTHORIZED)
         }
 
-        const payload = { sub: user.id, email: user.email }
+        const tokens = await this.generateToken(user.id, user.email)
+        await this.saveRefreshToken(user.id, tokens)
+        return tokens
+    }
 
-        return { access_token: this.jwtService.sign(payload) }
+    async generateToken(sub: string, email: string) {
+        const [access_token, refresh_token] = await Promise.all([
+            this.jwtService.signAsync({sub, email}, {expiresIn: '15m'}),
+            this.jwtService.signAsync({sub, email}, {expiresIn: '7d', secret: process.env.JWT_REFRESH_SECRET})
+        ])
+        return {access_token, refresh_token}
+    }
+
+    async saveRefreshToken(userId: string, tokens: {refresh_token: string}) {
+        const hash = await bcrypt.hash(tokens.refresh_token, 10)
+        await this.usersService.updateRefreshToken(userId, hash)
     }
 }
